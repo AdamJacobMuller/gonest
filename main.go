@@ -1,30 +1,69 @@
 package main
 
 import (
-	"github.com/AdamJacobMuller/gonest/gonest"
-
 	"fmt"
 	"os"
-	"strconv"
 	"time"
+
+	"github.com/AdamJacobMuller/gonest/gonest"
+	log "github.com/sirupsen/logrus"
+	"github.com/urfave/cli"
 )
 
+var nest gonest.Nest
+
 func main() {
-	n := gonest.Nest{}
-	n.Load()
-	n.Login()
-	n.Save()
+	app := cli.NewApp()
+	app.Commands = []cli.Command{
+		{
+			Name:    "download-video",
+			Aliases: []string{},
+			Usage:   "download a series of video clips",
+			Action:  DownloadVideo,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "id",
+					Usage: "camera id",
+				},
+				cli.Int64Flag{
+					Name: "start",
+				},
+				cli.Int64Flag{
+					Name: "end",
+				},
+			},
+		},
+	}
+	app.Run(os.Args)
+}
 
-	start, err := strconv.ParseInt(os.Args[2], 10, 64)
-	if err != nil {
-		panic(err)
+func DownloadVideo(c *cli.Context) {
+	start := c.Int64("start")
+	if start == 0 {
+		log.Fatal("start is required")
 	}
 
-	clip, err := n.CreateClip(os.Args[1], time.Unix(start, 0), 3600)
-	if err != nil {
-		panic(err)
+	end := c.Int64("end")
+	if end == 0 {
+		log.Fatal("end is required")
 	}
 
-	clip.Save(fmt.Sprintf("videos/%d.mp4", start))
-	clip.Delete()
+	id := c.String("id")
+	if id == "" {
+		log.Fatal("id is required")
+	}
+
+	nest.Load()
+	nest.Login()
+	nest.Save()
+
+	for i := start; i < end; i += 3600 {
+		clip, err := nest.CreateClip(id, time.Unix(i, 0), 3600)
+		if err != nil {
+			panic(err)
+		}
+
+		clip.Save(fmt.Sprintf("videos/%d.mp4", i))
+		clip.Delete()
+	}
 }
