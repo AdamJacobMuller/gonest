@@ -52,27 +52,28 @@ func (c Clip) Save(filename string) error {
 		return err
 	}
 
-	request, err := http.NewRequest("GET", c.DownloadURL, nil)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-			"id":    c.ID,
-			"url":   c.DownloadURL,
-		}).Error("failed create new HTTP request for clip download")
-		return err
-	}
-
 	attempts := 0
 	for {
+		request, err := http.NewRequest("GET", c.DownloadURL, nil)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+				"id":    c.ID,
+				"url":   c.DownloadURL,
+			}).Error("failed create new HTTP request for clip download")
+			return err
+		}
+
 		response, err := c.nest.httpClient.Do(request)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
 				"id":    c.ID,
 				"url":   c.DownloadURL,
-			}).Error("failed to delete clip")
+			}).Error("failed to fetch clip")
 			return err
 		}
+
 		if response.StatusCode == 404 {
 			log.WithFields(log.Fields{
 				"status":   response.Status,
@@ -82,9 +83,11 @@ func (c Clip) Save(filename string) error {
 			}).Info("waiting for file")
 			attempts += 1
 			if attempts > 300 {
+				response.Body.Close()
 				return errors.New("unable to save clip: 404")
 			}
 			time.Sleep(time.Second)
+			response.Body.Close()
 			continue
 		}
 		log.WithFields(log.Fields{
@@ -100,8 +103,10 @@ func (c Clip) Save(filename string) error {
 				"error":    err,
 				"url":      c.DownloadURL,
 			}).Info("saving file failed")
+			response.Body.Close()
 			return err
 		}
+		response.Body.Close()
 		break
 	}
 
