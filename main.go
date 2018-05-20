@@ -63,7 +63,7 @@ func DownloadVideo(c *cli.Context) {
 			panic(err)
 		}
 
-		clip.Save(fmt.Sprintf("videos/%d.mp4", i))
+		clip.Save(fmt.Sprintf("videos/%s-%d-%d.mp4", id, i, i+3600))
 		clip.Delete()
 	}
 }
