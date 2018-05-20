@@ -65,6 +65,7 @@ func (c Clip) Save(filename string) error {
 		}
 
 		response, err := c.nest.httpClient.Do(request)
+		defer response.Body.Close()
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -83,13 +84,27 @@ func (c Clip) Save(filename string) error {
 			}).Info("waiting for file")
 			attempts += 1
 			if attempts > 300 {
-				response.Body.Close()
-				return errors.New("unable to save clip: 404")
+				return errors.New("unable to save clip: clip not processed after 300 seconds")
 			}
 			time.Sleep(time.Second)
-			response.Body.Close()
 			continue
 		}
+
+		if response.StatusCode != 200 {
+			log.WithFields(log.Fields{
+				"status":   response.Status,
+				"id":       c.ID,
+				"url":      c.DownloadURL,
+				"attempts": attempts,
+			}).Info("hopefully temporary error fetching clip")
+			attempts += 1
+			if attempts > 300 {
+				return errors.New("unable to save clip: too many errors")
+			}
+			time.Sleep(time.Second)
+			continue
+		}
+
 		log.WithFields(log.Fields{
 			"id":       c.ID,
 			"filename": filename,
