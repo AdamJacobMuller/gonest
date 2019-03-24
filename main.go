@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -16,9 +17,37 @@ func main() {
 	app := cli.NewApp()
 	app.Commands = []cli.Command{
 		{
+			Name:    "download-clip",
+			Aliases: []string{},
+			Usage:   "download a specific clip",
+			Action:  DownloadClip,
+			Flags: []cli.Flag{
+				cli.Int64Flag{
+					Name:  "id",
+					Usage: "clip id",
+				},
+				cli.StringFlag{
+					Name:  "filename",
+					Usage: "filename to save clip to",
+				},
+			},
+		},
+		{
+			Name:    "download-clips",
+			Aliases: []string{},
+			Usage:   "download all clips",
+			Action:  DownloadClips,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "directory",
+					Usage: "directory to save clips to",
+				},
+			},
+		},
+		{
 			Name:    "download-video",
 			Aliases: []string{},
-			Usage:   "download a series of video clips",
+			Usage:   "download video by creating and deleting clips",
 			Action:  DownloadVideo,
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -44,6 +73,32 @@ func main() {
 	app.Run(os.Args)
 }
 
+func DownloadClips(c *cli.Context) {
+	nest.Load()
+	nest.Login()
+	nest.Save()
+
+	directory := c.String("directory")
+	if directory == "" {
+		log.Fatal("directory is required")
+	}
+
+	log.Info("listing clips")
+	clips, err := nest.ListClips()
+	if err != nil {
+		panic(err)
+	}
+
+	for _, clip := range clips {
+		filename := fmt.Sprintf("%s/%s", directory, clip.Filename)
+		log.WithFields(log.Fields{
+			"filename": filename,
+			"title":    clip.Title,
+		}).Info("saving clip")
+		clip.Save(filename)
+	}
+
+}
 func ListClips(c *cli.Context) {
 	nest.Load()
 	nest.Login()
@@ -53,7 +108,38 @@ func ListClips(c *cli.Context) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%#v\n", clips)
+
+	out, err := json.MarshalIndent(clips, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%s\n", out)
+}
+
+func DownloadClip(c *cli.Context) {
+	id := c.Int("id")
+	if id == 0 {
+		log.Fatal("id is required")
+	}
+
+	filename := c.String("filename")
+	if filename == "" {
+		filename = fmt.Sprintf("videos/%d.mp4", id)
+	}
+
+	nest.Load()
+	nest.Login()
+	nest.Save()
+
+	clips, err := nest.ListClips()
+	if err != nil {
+		panic(err)
+	}
+	for _, clip := range clips {
+		if clip.ID == id {
+			clip.Save(filename)
+		}
+	}
 }
 
 func DownloadVideo(c *cli.Context) {

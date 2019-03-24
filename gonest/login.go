@@ -245,7 +245,6 @@ func (n *Nest) GetCZToken() error {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("Response: %s\n", resp.Status)
 
 		respBody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
@@ -257,7 +256,6 @@ func (n *Nest) GetCZToken() error {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("NSR: %#v\n", nsr)
 		for _, cookie := range resp.Cookies() {
 			if cookie.Name == "cztoken" {
 				n.CZToken = cookie.Value

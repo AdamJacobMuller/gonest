@@ -64,6 +64,8 @@ func (c Clip) Save(filename string) error {
 			return err
 		}
 
+		request.Header.Add("Cookie", fmt.Sprintf("cztoken=%s; website_2=%s", c.nest.CZToken, c.nest.Website_2))
+
 		response, err := c.nest.httpClient.Do(request)
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -128,21 +130,71 @@ func (c Clip) Save(filename string) error {
 	return nil
 }
 
+/*
+
+   "length_in_seconds": 121,
+   "camera_id": 355564,
+   "clip_type": "",
+   "is_youtube_uploading": false,
+   "public_link": "https://www.dropcam.com/c/00cf62a337464ceca50ae943febc6fec.mp4",
+   "is_played": true,
+   "title": "My New Clip",
+   "camera_uuid": "2cb461328c9b4c5087dfb11cd2131a6c",
+   "download_url": "https://clips.dropcam.com/00cf62a337464ceca50ae943febc6fec.mp4",
+   "filename": "00cf62a337464ceca50ae943febc6fec.mp4",
+   "is_user_generated": true,
+   "generated_time": 1399654390.810344,
+   "nest_structure_id": "structure.eaa887e0-3681-11e1-9bda-12313801acf1",
+   "is_error": false,
+   "embed_url": "https://video.nest.com/embedded/clip/00cf62a337464ceca50ae943febc6fec.mp4",
+   "description": "",
+   "start_time": 1399636680,
+   "public_url": "https://video.nest.com/clip/00cf62a337464ceca50ae943febc6fec.mp4",
+   "play_count": 6,
+   "is_public": true,
+   "youtube_url": null,
+   "youtube_upload_error": null,
+   "notes": null,
+   "server": "clips.dropcam.com",
+   "thumbnail_url": "https://clips.dropcam.com/00cf62a337464ceca50ae943febc6fec.jpg",
+   "id": 442909,
+   "aspect_ratio": null,
+   "is_generated": true
+*/
 type Clip struct {
 	nest *Nest
 
-	PublicLink  string `json:"public_link"`
-	DownloadURL string `json:"download_url"`
-	ID          int    `json:"id"`
+	PublicLink            string  `json:"public_link"`
+	DownloadURL           string  `json:"download_url"`
+	ID                    int     `json:"id"`
+	Length                float64 `json:"length_in_seconds"`
+	Title                 string  `json:"title"`
+	GeneratedtedTimeFloat float64 `json:"generated_time"`
+	StartTimeFloat        float64 `json:"start_time"`
+	Filename              string  `json:"filename"`
 }
 
+type ClipListResponse struct {
+	Clips []*Clip `json:"clips"`
+}
+
+// https://webapi.camera.home.nest.com/api/clips.get_visible_with_quota
 // https://home.nest.com/dropcam/api/visible_clips
 func (n *Nest) ListClips() ([]*Clip, error) {
-	var clipList []*Clip
-	err := n.GetJSONUnmarsahl("https://home.nest.com/dropcam/api/clips/request", &clipList)
+	var clipListList []ClipListResponse
+	err := n.GetJSONUnmarsahl("https://home.nest.com/dropcam/api/visible_clips", &clipListList)
 	if err != nil {
 		return nil, err
 	}
+
+	var clipList []*Clip
+	for _, listOfClips := range clipListList {
+		for _, clip := range listOfClips.Clips {
+			clip.nest = n
+			clipList = append(clipList, clip)
+		}
+	}
+
 	return clipList, nil
 }
 
