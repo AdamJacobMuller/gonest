@@ -33,8 +33,27 @@ func main() {
 				},
 			},
 		},
+		{
+			Name:    "list-clips",
+			Aliases: []string{},
+			Usage:   "list video clips",
+			Action:  ListClips,
+			Flags:   []cli.Flag{},
+		},
 	}
 	app.Run(os.Args)
+}
+
+func ListClips(c *cli.Context) {
+	nest.Load()
+	nest.Login()
+	nest.Save()
+
+	clips, err := nest.ListClips()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%#v\n", clips)
 }
 
 func DownloadVideo(c *cli.Context) {

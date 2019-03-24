@@ -65,7 +65,6 @@ func (c Clip) Save(filename string) error {
 		}
 
 		response, err := c.nest.httpClient.Do(request)
-		defer response.Body.Close()
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -74,6 +73,7 @@ func (c Clip) Save(filename string) error {
 			}).Error("failed to fetch clip")
 			return err
 		}
+		defer response.Body.Close()
 
 		if response.StatusCode == 404 {
 			log.WithFields(log.Fields{
@@ -129,13 +129,24 @@ func (c Clip) Save(filename string) error {
 }
 
 type Clip struct {
-	nest *Nest `json:"-"`
+	nest *Nest
 
 	PublicLink  string `json:"public_link"`
 	DownloadURL string `json:"download_url"`
 	ID          int    `json:"id"`
 }
 
+// https://home.nest.com/dropcam/api/visible_clips
+func (n *Nest) ListClips() ([]*Clip, error) {
+	var clipList []*Clip
+	err := n.GetJSONUnmarsahl("https://home.nest.com/dropcam/api/clips/request", &clipList)
+	if err != nil {
+		return nil, err
+	}
+	return clipList, nil
+}
+
+// https://home.nest.com/camera/50f668e4151745988da09a704458d7f6/clips
 func (n *Nest) CreateClip(uuid string, start time.Time, length int) (*Clip, error) {
 	form := url.Values{}
 	form.Add("uuid", uuid)

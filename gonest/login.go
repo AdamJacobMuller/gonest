@@ -3,10 +3,12 @@ package gonest
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/AdamJacobMuller/golib"
 	log "github.com/sirupsen/logrus"
 	"github.com/tcnksm/go-input"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -95,6 +97,26 @@ func (n *Nest) TestCZToken() (bool, error) {
 	}
 }
 
+/*
+{"status":"VERIFICATION_PENDING","2fa_token":"","truncated_phone_number":"3172"}
+*/
+
+type NestSessionResponse struct {
+	Status   string `json:"status"`
+	TfaToken string `json:"2fa_token"`
+	Phone    string `json:"truncated_phone_number"`
+}
+
+type AccessTokenResponse struct {
+	Status      string `json:"status"`
+	AccessToken string `json:"access_token"`
+}
+
+type TFAVerifyRequest struct {
+	TfaToken string `json:"2fa_token"`
+	Pin      string `json:"pin"`
+}
+
 func (n *Nest) GetCZToken() error {
 	ui := &input.UI{
 		Writer: os.Stdout,
@@ -159,9 +181,93 @@ func (n *Nest) GetCZToken() error {
 
 	fmt.Printf("Response: %s\n", resp.Status)
 
-	for _, cookie := range resp.Cookies() {
-		if cookie.Name == "cztoken" {
-			n.CZToken = cookie.Value
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+
+	var nsr NestSessionResponse
+	err = json.Unmarshal(respBody, &nsr)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("NSR: %#v\n", nsr)
+	if nsr.Status == "VERIFICATION_PENDING" {
+		var tfa_cookie_name string
+		var tfa_cookie_value string
+		var tfa_cookie_found bool
+		var tfa_pin string
+		for _, cookie := range resp.Cookies() {
+			if cookie.Path == "/api/0.1/2fa/verify_pin" {
+				tfa_cookie_name = cookie.Name
+				tfa_cookie_value = cookie.Value
+				tfa_cookie_found = true
+				break
+			}
+		}
+		if tfa_cookie_found == false {
+			return errors.New("unable to locate tfa cookie")
+		}
+		fmt.Printf("%s=%s\n", tfa_cookie_name, tfa_cookie_value)
+		tfa_pin, err = ui.Ask("2FA Pin", &input.Options{
+			Required:  true,
+			Loop:      true,
+			Mask:      false,
+			HideOrder: true,
+		})
+		if err != nil {
+			panic(err)
+		}
+
+		tfa_verify_request := TFAVerifyRequest{
+			TfaToken: nsr.TfaToken,
+			Pin:      tfa_pin,
+		}
+
+		postBody, err := json.Marshal(tfa_verify_request)
+		if err != nil {
+			panic(err)
+		}
+
+		var b bytes.Buffer
+		b.Write(postBody)
+		req, err := http.NewRequest("POST", "https://home.nest.com/api/0.1/2fa/verify_pin", &b)
+		if err != nil {
+			panic(err)
+		}
+
+		req.AddCookie(&http.Cookie{Name: tfa_cookie_name, Value: tfa_cookie_value})
+		req.Header.Add("Content-Type", "application/json")
+		req.Header.Add("Origin", "https://home.nest.com")
+		req.Header.Add("Referer", "https://home.nest.com/")
+		resp, err = n.httpClient.Do(req)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Response: %s\n", resp.Status)
+
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			panic(err)
+		}
+
+		var nsr NestSessionResponse
+		err = json.Unmarshal(respBody, &nsr)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("NSR: %#v\n", nsr)
+		for _, cookie := range resp.Cookies() {
+			if cookie.Name == "cztoken" {
+				n.CZToken = cookie.Value
+			}
+		}
+	} else {
+		for _, cookie := range resp.Cookies() {
+			if cookie.Name == "cztoken" {
+				n.CZToken = cookie.Value
+			}
 		}
 	}
 	return nil
