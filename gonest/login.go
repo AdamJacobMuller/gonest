@@ -80,6 +80,7 @@ func (n *Nest) TestCZToken() (bool, error) {
 
 	req.Header.Add("Origin", "https://home.nest.com")
 	req.Header.Add("Authorization", fmt.Sprintf("Basic %s", n.CZToken))
+	req.Header.Add("User-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36")
 	req.Header.Add("Referer", "https://home.nest.com/")
 	resp, err := n.httpClient.Do(req)
 	if err != nil {
@@ -174,6 +175,7 @@ func (n *Nest) GetCZToken() error {
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Origin", "https://home.nest.com")
 	req.Header.Add("Referer", "https://home.nest.com/")
+	req.Header.Add("User-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36")
 	resp, err := n.httpClient.Do(req)
 	if err != nil {
 		panic(err)
@@ -240,6 +242,7 @@ func (n *Nest) GetCZToken() error {
 		req.AddCookie(&http.Cookie{Name: tfa_cookie_name, Value: tfa_cookie_value})
 		req.Header.Add("Content-Type", "application/json")
 		req.Header.Add("Origin", "https://home.nest.com")
+		req.Header.Add("User-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36")
 		req.Header.Add("Referer", "https://home.nest.com/")
 		resp, err = n.httpClient.Do(req)
 		if err != nil {
@@ -282,6 +285,7 @@ func (n *Nest) TestWebsite2() (bool, error) {
 	}
 
 	req.Header.Add("Origin", "https://home.nest.com")
+	req.Header.Add("User-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36")
 	req.Header.Add("Cookie", fmt.Sprintf("website_2=%s", n.Website_2))
 	req.Header.Add("Referer", "https://home.nest.com/")
 	resp, err := n.httpClient.Do(req)
@@ -310,6 +314,7 @@ func (n *Nest) GetWebsite2() error {
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Origin", "https://home.nest.com")
+	req.Header.Add("User-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36")
 	req.Header.Add("Referer", "https://home.nest.com/")
 	resp, err := n.httpClient.Do(req)
 	if err != nil {
