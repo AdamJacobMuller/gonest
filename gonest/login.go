@@ -28,6 +28,8 @@ type Nest struct {
 	Password  string `json:"password"`
 	CZToken   string `json:"czToken"`
 	Website_2 string `json:"website2"`
+	N         string `json:"n"`
+	UserToken string `json:"user_token"`
 }
 
 func (n *Nest) Save() error {
@@ -41,6 +43,7 @@ func (n *Nest) Load() error {
 }
 
 func (n *Nest) Login() error {
+	return nil
 	czTokenOk, err := n.TestCZToken()
 	if err != nil {
 		return err

@@ -25,7 +25,7 @@ func (n *Nest) Delete(url string) (*http.Response, error) {
 
 	request.Header.Add("Origin", "https://home.nest.com")
 	request.Header.Add("Referer", "https://home.nest.com/")
-	request.Header.Add("Cookie", fmt.Sprintf("cztoken=%s; website_2=%s", n.CZToken, n.Website_2))
+	request.Header.Add("Cookie", fmt.Sprintf("n=%s; user_token=%s", n.N, n.UserToken))
 	response, err := n.httpClient.Do(request)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -51,7 +51,7 @@ func (n *Nest) GetJSONUnmarsahl(url string, result interface{}) error {
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Origin", "https://home.nest.com")
 	req.Header.Add("Referer", "https://home.nest.com/")
-	req.Header.Add("Cookie", fmt.Sprintf("cztoken=%s; website_2=%s", n.CZToken, n.Website_2))
+	req.Header.Add("Cookie", fmt.Sprintf("n=%s; user_token=%s", n.N, n.UserToken))
 	resp, err := n.httpClient.Do(req)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -104,7 +104,7 @@ func (n *Nest) PostFormJSONUnmarsahl(url string, form url.Values, result interfa
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Origin", "https://home.nest.com")
 	req.Header.Add("Referer", "https://home.nest.com/")
-	req.Header.Add("Cookie", fmt.Sprintf("cztoken=%s; website_2=%s", n.CZToken, n.Website_2))
+	req.Header.Add("Cookie", fmt.Sprintf("n=%s; user_token=%s", n.N, n.UserToken))
 	resp, err := n.httpClient.Do(req)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -168,7 +168,7 @@ func (n *Nest) PostJSONUnmarsahl(url string, post interface{}, result interface{
 
 	req.Header.Add("Origin", "https://home.nest.com")
 	req.Header.Add("Referer", "https://home.nest.com/")
-	req.Header.Add("Cookie", fmt.Sprintf("cztoken=%s; website_2=%s", n.CZToken, n.Website_2))
+	req.Header.Add("Cookie", fmt.Sprintf("n=%s; user_token=%s", n.N, n.UserToken))
 	resp, err := n.httpClient.Do(req)
 	if err != nil {
 		log.WithFields(log.Fields{
