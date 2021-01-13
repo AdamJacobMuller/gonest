@@ -24,6 +24,9 @@ type LoginRequest struct {
 type Nest struct {
 	httpClient http.Client
 
+	DumpRawRequest  bool
+	DumpRawResponse bool
+
 	Email     string `json:"email"`
 	Password  string `json:"password"`
 	CZToken   string `json:"czToken"`

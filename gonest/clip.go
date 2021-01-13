@@ -13,12 +13,14 @@ import (
 )
 
 func (c Clip) Delete() error {
-	url := fmt.Sprintf("https://home.nest.com/dropcam/api/clips/%d", c.ID)
+	url := fmt.Sprintf("https://webapi.camera.home.nest.com/api/clips.delete")
+	body := fmt.Sprintf("id=%d", c.ID)
 	log.WithFields(log.Fields{
-		"id":  c.ID,
-		"url": url,
+		"id":   c.ID,
+		"url":  url,
+		"body": body,
 	}).Info("deleting clip")
-	response, err := c.nest.Delete(url)
+	response, err := c.nest.Delete(url, body)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"url": url,
@@ -174,22 +176,36 @@ type Clip struct {
 	Filename              string  `json:"filename"`
 }
 
-type ClipListResponse struct {
+type Items struct {
 	Clips []*Clip `json:"clips"`
+}
+
+type ClipListResponse struct {
+	Items             []*Items `json:"items"`
+	Status            int      `json:"status"`
+	StatusDescription string   `json:"status_description"`
+	StatusDetail      string   `json:"status_detail"`
+}
+
+type ClipCreateResponse struct {
+	Clips             []*Clip `json:"items"`
+	Status            int     `json:"status"`
+	StatusDescription string  `json:"status_description"`
+	StatusDetail      string  `json:"status_detail"`
 }
 
 // https://webapi.camera.home.nest.com/api/clips.get_visible_with_quota
 // https://home.nest.com/dropcam/api/visible_clips
 func (n *Nest) ListClips() ([]*Clip, error) {
-	var clipListList []ClipListResponse
-	err := n.GetJSONUnmarsahl("https://home.nest.com/dropcam/api/visible_clips", &clipListList)
+	var clipResponse ClipListResponse
+	err := n.GetJSONUnmarsahl("https://webapi.camera.home.nest.com/api/clips.get_visible_with_quota", &clipResponse)
 	if err != nil {
 		return nil, err
 	}
 
 	var clipList []*Clip
-	for _, listOfClips := range clipListList {
-		for _, clip := range listOfClips.Clips {
+	for _, item := range clipResponse.Items {
+		for _, clip := range item.Clips {
 			clip.nest = n
 			clipList = append(clipList, clip)
 		}
@@ -202,27 +218,31 @@ func (n *Nest) ListClips() ([]*Clip, error) {
 func (n *Nest) CreateClip(uuid string, start time.Time, length int) (*Clip, error) {
 	form := url.Values{}
 	form.Add("uuid", uuid)
-	form.Add("start_date", fmt.Sprintf("%d", start.Unix()))
+	form.Add("start_date", fmt.Sprintf("%d.00", start.Unix()))
 	form.Add("length", fmt.Sprintf("%d", length))
 	form.Add("is_public", "true")
 	form.Add("is_time_lapse", "false")
 	form.Add("donate_video", "false")
 
-	var clipList []Clip
+	var clipResponse ClipCreateResponse
 	var err error
 
-	err = n.PostFormJSONUnmarsahl("https://home.nest.com/dropcam/api/clips/request", form, &clipList)
+	_, err = n.PostFormJSONUnmarsahl("https://webapi.camera.home.nest.com/api/clips.request", form, &clipResponse)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(clipList) == 0 {
+	if clipResponse.Status > 0 {
+		return nil, fmt.Errorf("%d: %s: %s", clipResponse.Status, clipResponse.StatusDescription, clipResponse.StatusDetail)
+	}
+
+	if len(clipResponse.Clips) == 0 {
 		return nil, errors.New("got 0 length clip list")
 	}
 
-	clip := clipList[0]
+	clip := clipResponse.Clips[0]
 	clip.nest = n
 
-	return &clip, nil
+	return clip, nil
 
 }

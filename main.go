@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/AdamJacobMuller/gonest/gonest"
@@ -29,6 +32,18 @@ func main() {
 				cli.StringFlag{
 					Name:  "filename",
 					Usage: "filename to save clip to",
+				},
+			},
+		},
+		{
+			Name:    "delete-clip",
+			Aliases: []string{},
+			Usage:   "delete a specific clip",
+			Action:  DeleteClip,
+			Flags: []cli.Flag{
+				cli.Int64Flag{
+					Name:  "id",
+					Usage: "clip id",
 				},
 			},
 		},
@@ -63,6 +78,18 @@ func main() {
 			},
 		},
 		{
+			Name:    "load-cookie",
+			Aliases: []string{},
+			Usage:   "parse cookie",
+			Action:  ParseCookie,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "cookie",
+					Usage: "cookie string",
+				},
+			},
+		},
+		{
 			Name:    "list-clips",
 			Aliases: []string{},
 			Usage:   "list video clips",
@@ -71,6 +98,29 @@ func main() {
 		},
 	}
 	app.Run(os.Args)
+}
+
+func ParseCookie(c *cli.Context) {
+	nest.Load()
+	rawRequest := fmt.Sprintf("GET / HTTP/1.0\r\n%s\r\n\r\n", c.String("cookie"))
+
+	req, err := http.ReadRequest(bufio.NewReader(strings.NewReader(rawRequest)))
+
+	if err != nil {
+		panic(err)
+	}
+	cookies := req.Cookies()
+
+	for _, cookie := range cookies {
+		if cookie.Name == "user_token" {
+			nest.UserToken = cookie.Value
+		}
+		if cookie.Name == "n" {
+			nest.N = cookie.Value
+		}
+	}
+
+	nest.Save()
 }
 
 func DownloadClips(c *cli.Context) {
@@ -138,6 +188,27 @@ func DownloadClip(c *cli.Context) {
 	for _, clip := range clips {
 		if clip.ID == id {
 			clip.Save(filename)
+		}
+	}
+}
+
+func DeleteClip(c *cli.Context) {
+	id := c.Int("id")
+	if id == 0 {
+		log.Fatal("id is required")
+	}
+
+	nest.Load()
+	nest.Login()
+	nest.Save()
+
+	clips, err := nest.ListClips()
+	if err != nil {
+		panic(err)
+	}
+	for _, clip := range clips {
+		if clip.ID == id {
+			clip.Delete()
 		}
 	}
 }

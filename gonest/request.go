@@ -9,23 +9,35 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"strings"
 )
 
-func (n *Nest) Delete(url string) (*http.Response, error) {
-	request, err := http.NewRequest("DELETE", url, nil)
+func (n *Nest) Delete(url string, body string) (*http.Response, error) {
+	request, err := http.NewRequest("DELETE", url, bytes.NewBufferString(body))
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"url":   url,
+			"body":  body,
 		}).Error("failed to create new DELETE request")
 		return nil, err
 	}
 
 	request.Header.Add("Origin", "https://home.nest.com")
 	request.Header.Add("Referer", "https://home.nest.com/")
+	request.Header.Add("content-type", "application/x-www-form-urlencoded")
 	request.Header.Add("Cookie", fmt.Sprintf("n=%s; user_token=%s", n.N, n.UserToken))
+
+	if n.DumpRawRequest {
+		reqDump, err := httputil.DumpRequestOut(request, true)
+		if err != nil {
+		} else {
+			fmt.Printf("%s\n", reqDump)
+		}
+	}
+
 	response, err := n.httpClient.Do(request)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -34,6 +46,15 @@ func (n *Nest) Delete(url string) (*http.Response, error) {
 		}).Error("failed to Do request")
 		return nil, err
 	}
+
+	if n.DumpRawResponse {
+		respDump, err := httputil.DumpResponse(response, true)
+		if err != nil {
+		} else {
+			fmt.Printf("%s\n", respDump)
+		}
+	}
+
 	response.Body.Close()
 
 	return response, nil
@@ -91,14 +112,14 @@ func (n *Nest) GetJSONUnmarsahl(url string, result interface{}) error {
 	return nil
 }
 
-func (n *Nest) PostFormJSONUnmarsahl(url string, form url.Values, result interface{}) error {
+func (n *Nest) PostFormJSONUnmarsahl(url string, form url.Values, result interface{}) ([]byte, error) {
 	req, err := http.NewRequest("POST", url, strings.NewReader(form.Encode()))
 	if err != nil {
 		log.WithFields(log.Fields{
 			"url":   url,
 			"error": err,
 		}).Error("PostJSONUnmarsahl http.NewRequest failed")
-		return err
+		return nil, err
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -111,7 +132,7 @@ func (n *Nest) PostFormJSONUnmarsahl(url string, form url.Values, result interfa
 			"url":   url,
 			"error": err,
 		}).Error("PostJSONUnmarsahl HTTP request failed")
-		return err
+		return nil, err
 	}
 
 	if resp.StatusCode != 200 {
@@ -119,7 +140,7 @@ func (n *Nest) PostFormJSONUnmarsahl(url string, form url.Values, result interfa
 			"url":    url,
 			"status": resp.Status,
 		}).Error("PostFormJSONUnmarsahl invalid status code returned")
-		return errors.New("invalid status code returned")
+		return nil, errors.New("invalid status code returned")
 	}
 
 	respBodyBytes, err := ioutil.ReadAll(resp.Body)
@@ -128,7 +149,7 @@ func (n *Nest) PostFormJSONUnmarsahl(url string, form url.Values, result interfa
 			"url":   url,
 			"error": err,
 		}).Error("PostJSONUnmarsahl ioutil.ReadAll failed")
-		return err
+		return nil, err
 	}
 	resp.Body.Close()
 
@@ -137,11 +158,13 @@ func (n *Nest) PostFormJSONUnmarsahl(url string, form url.Values, result interfa
 		log.WithFields(log.Fields{
 			"url":   url,
 			"error": err,
+			"body":  string(respBodyBytes),
+			"form":  form,
 		}).Error("PostJSONUnmarsahl json.Unmarshal failed")
-		return err
+		return respBodyBytes, err
 	}
 
-	return nil
+	return respBodyBytes, nil
 }
 
 func (n *Nest) PostJSONUnmarsahl(url string, post interface{}, result interface{}) error {
@@ -200,6 +223,7 @@ func (n *Nest) PostJSONUnmarsahl(url string, post interface{}, result interface{
 		log.WithFields(log.Fields{
 			"url":   url,
 			"error": err,
+			"body":  string(respBodyBytes),
 		}).Error("PostJSONUnmarsahl json.Unmarshal failed")
 		return err
 	}
