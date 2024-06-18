@@ -46,7 +46,9 @@ func (n *Nest) Load() error {
 }
 
 func (n *Nest) Login() error {
-	return nil
+	if true {
+		return nil
+	}
 	czTokenOk, err := n.TestCZToken()
 	if err != nil {
 		return err

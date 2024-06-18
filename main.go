@@ -141,11 +141,22 @@ func DownloadClips(c *cli.Context) {
 
 	for _, clip := range clips {
 		filename := fmt.Sprintf("%s/%s", directory, clip.Filename)
+		_, err := os.Stat(filename)
+		if err == nil {
+			continue
+		}
 		log.WithFields(log.Fields{
 			"filename": filename,
 			"title":    clip.Title,
 		}).Info("saving clip")
-		clip.Save(filename)
+		err = clip.Save(filename)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"filename": filename,
+				"title":    clip.Title,
+				"error":    err,
+			}).Error("failed saving clip")
+		}
 	}
 
 }

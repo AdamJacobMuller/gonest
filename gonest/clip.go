@@ -44,7 +44,9 @@ func (c Clip) Delete() error {
 }
 
 func (c Clip) Save(filename string) error {
-	fh, err := os.Create(filename)
+	tmpFilename := fmt.Sprintf("%s.tmp", filename)
+
+	fh, err := os.Create(tmpFilename)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -66,7 +68,7 @@ func (c Clip) Save(filename string) error {
 			return err
 		}
 
-		request.Header.Add("Cookie", fmt.Sprintf("cztoken=%s; website_2=%s", c.nest.CZToken, c.nest.Website_2))
+		request.Header.Add("Cookie", fmt.Sprintf("cztoken=%s; user_token=%s", c.nest.CZToken, c.nest.UserToken))
 
 		response, err := c.nest.httpClient.Do(request)
 		if err != nil {
@@ -78,6 +80,10 @@ func (c Clip) Save(filename string) error {
 			return err
 		}
 		defer response.Body.Close()
+
+		if response.StatusCode == 403 {
+			return errors.New("unable to save clip: 403")
+		}
 
 		if response.StatusCode == 404 {
 			log.WithFields(log.Fields{
@@ -117,15 +123,29 @@ func (c Clip) Save(filename string) error {
 		_, err = io.Copy(fh, response.Body)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"id":       c.ID,
-				"filename": filename,
-				"error":    err,
-				"url":      c.DownloadURL,
+				"id":          c.ID,
+				"filename":    filename,
+				"tmpFilename": tmpFilename,
+				"error":       err,
+				"url":         c.DownloadURL,
 			}).Info("saving file failed")
 			response.Body.Close()
 			return err
 		}
 		response.Body.Close()
+
+		err = os.Rename(tmpFilename, filename)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"id":          c.ID,
+				"filename":    filename,
+				"tmpFilename": tmpFilename,
+				"error":       err,
+				"url":         c.DownloadURL,
+			}).Info("renaming file failed")
+			response.Body.Close()
+			return err
+		}
 		break
 	}
 
@@ -133,35 +153,34 @@ func (c Clip) Save(filename string) error {
 }
 
 /*
-
-   "length_in_seconds": 121,
-   "camera_id": 355564,
-   "clip_type": "",
-   "is_youtube_uploading": false,
-   "public_link": "https://www.dropcam.com/c/00cf62a337464ceca50ae943febc6fec.mp4",
-   "is_played": true,
-   "title": "My New Clip",
-   "camera_uuid": "2cb461328c9b4c5087dfb11cd2131a6c",
-   "download_url": "https://clips.dropcam.com/00cf62a337464ceca50ae943febc6fec.mp4",
-   "filename": "00cf62a337464ceca50ae943febc6fec.mp4",
-   "is_user_generated": true,
-   "generated_time": 1399654390.810344,
-   "nest_structure_id": "structure.eaa887e0-3681-11e1-9bda-12313801acf1",
-   "is_error": false,
-   "embed_url": "https://video.nest.com/embedded/clip/00cf62a337464ceca50ae943febc6fec.mp4",
-   "description": "",
-   "start_time": 1399636680,
-   "public_url": "https://video.nest.com/clip/00cf62a337464ceca50ae943febc6fec.mp4",
-   "play_count": 6,
-   "is_public": true,
-   "youtube_url": null,
-   "youtube_upload_error": null,
-   "notes": null,
-   "server": "clips.dropcam.com",
-   "thumbnail_url": "https://clips.dropcam.com/00cf62a337464ceca50ae943febc6fec.jpg",
-   "id": 442909,
-   "aspect_ratio": null,
-   "is_generated": true
+"length_in_seconds": 121,
+"camera_id": 355564,
+"clip_type": "",
+"is_youtube_uploading": false,
+"public_link": "https://www.dropcam.com/c/00cf62a337464ceca50ae943febc6fec.mp4",
+"is_played": true,
+"title": "My New Clip",
+"camera_uuid": "2cb461328c9b4c5087dfb11cd2131a6c",
+"download_url": "https://clips.dropcam.com/00cf62a337464ceca50ae943febc6fec.mp4",
+"filename": "00cf62a337464ceca50ae943febc6fec.mp4",
+"is_user_generated": true,
+"generated_time": 1399654390.810344,
+"nest_structure_id": "structure.eaa887e0-3681-11e1-9bda-12313801acf1",
+"is_error": false,
+"embed_url": "https://video.nest.com/embedded/clip/00cf62a337464ceca50ae943febc6fec.mp4",
+"description": "",
+"start_time": 1399636680,
+"public_url": "https://video.nest.com/clip/00cf62a337464ceca50ae943febc6fec.mp4",
+"play_count": 6,
+"is_public": true,
+"youtube_url": null,
+"youtube_upload_error": null,
+"notes": null,
+"server": "clips.dropcam.com",
+"thumbnail_url": "https://clips.dropcam.com/00cf62a337464ceca50ae943febc6fec.jpg",
+"id": 442909,
+"aspect_ratio": null,
+"is_generated": true
 */
 type Clip struct {
 	nest *Nest
